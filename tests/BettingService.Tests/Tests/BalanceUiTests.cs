@@ -2,6 +2,7 @@ using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
 using BettingService.Tests.Pages;
 
+
 namespace BettingService.Tests.Tests;
 
 [TestFixture]
@@ -10,17 +11,11 @@ public class BalanceUiTests : PlaywrightTest
     private IBrowser _browser = null!;
     private IPage _page = null!;
     private BettingPage _bettingPage = null!;
-    private IAPIRequestContext _api = null!;
     private readonly string _baseUrl = "http://localhost:5000";
 
     [SetUp]
     public async Task SetUp()
     {
-        _api = await Playwright.APIRequest.NewContextAsync(new()
-        {
-            BaseURL = _baseUrl
-        });
-
         _browser = await Playwright.Chromium.LaunchAsync(new() { Headless = true });
         _page = await _browser.NewPageAsync();
         _bettingPage = new BettingPage(_page);
@@ -31,7 +26,6 @@ public class BalanceUiTests : PlaywrightTest
     {
         await _page.CloseAsync();
         await _browser.CloseAsync();
-        await _api.DisposeAsync();
     }
 
     [Test]

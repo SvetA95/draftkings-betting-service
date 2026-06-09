@@ -10,8 +10,6 @@ public class BettingPage(IPage page)
 
     // Market / selections
     public ILocator SelectionButtons => page.Locator(".selection-btn");
-    public ILocator FirstSelectionButton => SelectionButtons.First;
-
     public ILocator SelectionName(ILocator selectionButton) => selectionButton.Locator(".selection-name");
     public ILocator SelectionOdds(ILocator selectionButton) => selectionButton.Locator(".selection-odds");
 
@@ -32,7 +30,6 @@ public class BettingPage(IPage page)
     public ILocator PotentialPayout => page.Locator("#potential-payout");
 
     // Actions
-
     public async Task GoToAsync(string baseUrl)
     {
         await page.GotoAsync(baseUrl);
@@ -41,7 +38,7 @@ public class BettingPage(IPage page)
 
     public async Task SelectAndStakeAsync(decimal stake, ILocator? selectionButton = null)
     {
-        await (selectionButton ?? FirstSelectionButton).ClickAsync();
+        await (selectionButton ?? SelectionButtons.First).ClickAsync();
         await StakeInput.FillAsync(stake.ToString("F2"));
     }
 
