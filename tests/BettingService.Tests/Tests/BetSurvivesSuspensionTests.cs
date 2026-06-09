@@ -1,3 +1,6 @@
+using Microsoft.Playwright;
+using Microsoft.Playwright.NUnit;
+
 namespace BettingService.Tests.Tests;
 
 [TestFixture]

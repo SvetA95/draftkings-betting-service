@@ -1,5 +1,6 @@
-using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
+using BettingService.Tests.Pages;
+using Microsoft.Playwright;
 
 namespace BettingService.Tests.Tests;
 
@@ -8,19 +9,22 @@ public class BetSlipUiTests : PlaywrightTest
 {
     private IBrowser _browser = null!;
     private IPage _page = null!;
-    private IAPIRequestContext _api = null!;
+    private BettingPage _bettingPage = null!;
     private readonly string _baseUrl = "http://localhost:5000";
+
+    private static readonly (string Name, decimal Odds)[] ExpectedSelections =
+    [
+        ("Team A", 2.50m),
+        ("Team B", 1.80m),
+        ("Draw",   3.20m)
+    ];
 
     [SetUp]
     public async Task SetUp()
     {
-        _api = await Playwright.APIRequest.NewContextAsync(new()
-        {
-            BaseURL = _baseUrl
-        });
-
         _browser = await Playwright.Chromium.LaunchAsync(new() { Headless = true });
         _page = await _browser.NewPageAsync();
+        _bettingPage = new BettingPage(_page);
     }
 
     [TearDown]
@@ -28,47 +32,40 @@ public class BetSlipUiTests : PlaywrightTest
     {
         await _page.CloseAsync();
         await _browser.CloseAsync();
-        await _api.DisposeAsync();
     }
 
+    // TC-003: Bet slip displays selections with correct odds
     [Test]
     public async Task Bet_Slip_Displays_Selections_With_Correct_Odds()
     {
-        // Navigate to the page
-        await _page.GotoAsync(_baseUrl);
+        await _bettingPage.GoToAsync(_baseUrl);
 
-        // Wait for markets to load
-        await _page.WaitForSelectorAsync(".selection-btn");
+        // Step 1-2: all selections are visible with correct names and odds
+        Assert.That(await _bettingPage.GetSelectionCountAsync(), Is.EqualTo(ExpectedSelections.Length));
 
-        // Assert: selections are visible with correct odds from the UI
-        var selections = await _page.QuerySelectorAllAsync(".selection-btn");
-        Assert.That(selections, Has.Count.GreaterThanOrEqualTo(1));
+        foreach (var (index, (expectedName, expectedOdds)) in ExpectedSelections.Index())
+        {
+            var btn = _bettingPage.SelectionButtons.Nth(index);
+            Assert.That(await _bettingPage.GetSelectionNameTextAsync(btn), Is.EqualTo(expectedName));
+            Assert.That(await _bettingPage.GetSelectionOddsValueAsync(btn), Is.EqualTo(expectedOdds));
+        }
 
-        // Click the first selection
-        var firstSelection = selections[0];
-        var selectionName = await firstSelection.QuerySelectorAsync(".selection-name");
-        var selectionOdds = await firstSelection.QuerySelectorAsync(".selection-odds");
+        // Step 3: clicking a selection populates the bet slip correctly
+        var firstBtn = _bettingPage.SelectionButtons.First;
+        await firstBtn.ClickAsync();
 
-        var nameText = await selectionName!.TextContentAsync();
-        var oddsText = await selectionOdds!.TextContentAsync();
+        Assert.That(
+            (await _bettingPage.BetSlipSelectionName.TextContentAsync())!.Trim(),
+            Is.EqualTo(ExpectedSelections[0].Name));
+        Assert.That(
+            (await _bettingPage.BetSlipOdds.TextContentAsync())!.Trim(),
+            Is.EqualTo(ExpectedSelections[0].Odds.ToString("F2")));
 
-        Assert.That(nameText, Is.Not.Null.And.Not.Empty);
-        Assert.That(decimal.Parse(oddsText!), Is.GreaterThan(1.0m));
+        // Step 4: entering a stake shows the correct potential payout (stake × odds)
+        await _bettingPage.StakeInput.FillAsync("10");
 
-        // Click the selection button
-        await firstSelection.ClickAsync();
-
-        // Assert: bet slip populates with selection details
-        var betSlipName = await _page.TextContentAsync("#betslip-selection-name");
-        var betSlipOdds = await _page.TextContentAsync("#betslip-odds");
-
-        Assert.That(betSlipName, Is.EqualTo(nameText));
-        Assert.That(betSlipOdds, Is.EqualTo(oddsText));
-
-        // Enter stake and verify payout calculation
-        await _page.FillAsync("#stake-input", "10");
-        var expectedPayout = $"£{(10m * decimal.Parse(oddsText!)):F2}";
-        var displayedPayout = await _page.TextContentAsync("#potential-payout");
-        Assert.That(displayedPayout, Is.EqualTo(expectedPayout));
+        Assert.That(
+            (await _bettingPage.PotentialPayout.TextContentAsync())!.Trim(),
+            Is.EqualTo($"£{10m * ExpectedSelections[0].Odds:F2}"));
     }
 }

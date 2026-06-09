@@ -12,6 +12,17 @@ public class BettingPage(IPage page)
     public ILocator SelectionButtons => page.Locator(".selection-btn");
     public ILocator FirstSelectionButton => SelectionButtons.First;
 
+    public ILocator SelectionName(ILocator selectionButton) => selectionButton.Locator(".selection-name");
+    public ILocator SelectionOdds(ILocator selectionButton) => selectionButton.Locator(".selection-odds");
+
+    public async Task<int> GetSelectionCountAsync() => await SelectionButtons.CountAsync();
+
+    public async Task<string> GetSelectionNameTextAsync(ILocator selectionButton)
+        => (await SelectionName(selectionButton).TextContentAsync())!.Trim();
+
+    public async Task<decimal> GetSelectionOddsValueAsync(ILocator selectionButton)
+        => decimal.Parse((await SelectionOdds(selectionButton).TextContentAsync())!.Trim());
+
     // Bet slip
     public ILocator StakeInput => page.Locator("#stake-input");
     public ILocator PlaceBetButton => page.GetByRole(AriaRole.Button, new() { Name = "Place Bet" });
