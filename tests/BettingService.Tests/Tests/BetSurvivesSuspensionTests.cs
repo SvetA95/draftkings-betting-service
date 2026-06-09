@@ -1,7 +1,3 @@
-using System.Text.Json;
-using Microsoft.Playwright;
-using Microsoft.Playwright.NUnit;
-
 namespace BettingService.Tests.Tests;
 
 [TestFixture]
@@ -26,73 +22,52 @@ public class BetSurvivesSuspensionTests : PlaywrightTest
     }
 
     [Test]
-    public async Task Active_Bet_Remains_After_Market_Is_Suspended()
+    public async Task Active_Bet_Survives_Suspension_And_Settles_Correctly_After_Resume()
     {
-        // Arrange: create user
-        var userResponse = await _api.PostAsync("/api/users", new()
-        {
-            DataObject = new { name = $"user_{Guid.NewGuid():N}", balance = 100.00m }
-        });
-        var user = await userResponse.JsonAsync();
-        var userId = user.Value.GetProperty("id").GetString();
+        // Arrange: create user and market
+        var userId = await BettingApiHelper.CreateUserAsync(_api, balance: 100.00m);
+        var market = await BettingApiHelper.CreateMarketAsync(_api, ("Team A", 2.50m));
 
-        // Arrange: create market
-        var eventId = Guid.NewGuid();
-        var marketResponse = await _api.PostAsync("/api/markets", new()
-        {
-            DataObject = new
-            {
-                name = "Match Winner",
-                eventId,
-                eventName = "Test Match",
-                selections = new[] { new { name = "Team A", odds = 2.50 } }
-            }
-        });
-        var market = await marketResponse.JsonAsync();
-        var marketId = market.Value.GetProperty("id").GetString();
-        var selectionId = market.Value.GetProperty("selections")[0].GetProperty("id").GetString();
+        // Arrange: place bet and wait for Active state
+        await BettingApiHelper.PlaceBetAsync(_api, userId, market.SelectionIds[0], stake: 10.00m);
 
-        // Arrange: place bet and wait for processing
-        await _api.PostAsync($"/api/users/{userId}/bets", new()
-        {
-            DataObject = new { selectionId, stake = 10.00m }
-        });
-
-        await PollUntilAsync(async () =>
-        {
-            var bets = await _api.GetAsync($"/api/users/{userId}/bets");
-            var data = await bets.JsonAsync();
-            return data.Value.EnumerateArray().Any();
-        }, timeoutMs: 5000);
+        var betActive = await BettingApiHelper.WaitForBetStateAsync(_api, userId, "Active");
+        Assert.That(betActive, Is.True, "Bet must be Active before suspension");
 
         // Act: suspend the market
-        await _api.PostAsync($"/api/markets/{marketId}/suspend", new() { });
+        await BettingApiHelper.SuspendMarketAsync(_api, market.MarketId);
+        var suspended = await BettingApiHelper.WaitForMarketStateAsync(_api, market.MarketId, "Suspended");
+        Assert.That(suspended, Is.True, "Market should reach Suspended state");
 
-        // Wait for suspension to propagate
-        await PollUntilAsync(async () =>
+        // Assert: bet state must still be Active — suspension must not affect existing bets
+        var betsAfterSuspension = await BettingApiHelper.GetBetsAsync(_api, userId);
+        Assert.That(betsAfterSuspension, Is.Not.Empty, "Bet should still exist after market suspension");
+        Assert.That(betsAfterSuspension[0].GetProperty("state").GetString(), Is.EqualTo("Active"),
+            "Bet state must remain Active after market suspension — suspension should not void existing bets");
+
+        // Act: resume the market
+        await BettingApiHelper.ResumeMarketAsync(_api, market.MarketId);
+        var resumed = await BettingApiHelper.WaitForMarketStateAsync(_api, market.MarketId, "Open");
+        Assert.That(resumed, Is.True, "Market should return to Open state after resume");
+
+        // Act: settle the event — Team A wins
+        await BettingApiHelper.PostResultAsync(_api, market.EventId, market.SelectionIds[0]);
+
+        // Assert: bet settles correctly despite the suspend/resume cycle
+        var settled = await BettingApiHelper.PollUntilAsync(async () =>
         {
-            var state = await _api.GetAsync($"/api/markets/{marketId}");
-            var data = await state.JsonAsync();
-            return data.Value.GetProperty("state").GetString() == "Suspended";
-        }, timeoutMs: 5000);
+            var bets = await BettingApiHelper.GetBetsAsync(_api, userId);
+            return bets.Any(b => b.GetProperty("state").GetString() == "Won");
+        });
+        Assert.That(settled, Is.True, "Bet should settle as Won after resume and result");
 
-        // Assert: bet should still exist after suspension
-        var betsAfterSuspension = await _api.GetAsync($"/api/users/{userId}/bets");
-        var betsData = await betsAfterSuspension.JsonAsync();
-        var betsArray = betsData.Value.EnumerateArray().ToList();
+        var finalBets = await BettingApiHelper.GetBetsAsync(_api, userId);
+        Assert.That(finalBets[0].GetProperty("payout").GetDecimal(), Is.EqualTo(25.00m),
+            "Payout should be stake × odds = £25");
 
-        Assert.That(betsArray, Is.Not.Empty,
-            "Bet should still exist after market suspension");
-    }
-
-    private static async Task<bool> PollUntilAsync(Func<Task<bool>> condition, int timeoutMs, int intervalMs = 250)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (await condition()) return true;
-            await Task.Delay(intervalMs);
-        }
-        return false;
+        // Assert: balance = £100 − £10 stake + £25 payout = £115
+        var balance = await BettingApiHelper.GetBalanceAsync(_api, userId);
+        Assert.That(balance, Is.EqualTo(115.00m),
+            "Balance should be £115 after winning settlement following suspend/resume cycle");
     }
 }

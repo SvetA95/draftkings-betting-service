@@ -1,5 +1,6 @@
 using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
+using BettingService.Tests.Pages;
 
 namespace BettingService.Tests.Tests;
 
@@ -8,6 +9,7 @@ public class BalanceUiTests : PlaywrightTest
 {
     private IBrowser _browser = null!;
     private IPage _page = null!;
+    private BettingPage _bettingPage = null!;
     private IAPIRequestContext _api = null!;
     private readonly string _baseUrl = "http://localhost:5000";
 
@@ -21,6 +23,7 @@ public class BalanceUiTests : PlaywrightTest
 
         _browser = await Playwright.Chromium.LaunchAsync(new() { Headless = true });
         _page = await _browser.NewPageAsync();
+        _bettingPage = new BettingPage(_page);
     }
 
     [TearDown]
@@ -34,34 +37,35 @@ public class BalanceUiTests : PlaywrightTest
     [Test]
     public async Task Balance_Updates_In_UI_After_Bet_Is_Placed()
     {
-        // Navigate to the app
-        await _page.GotoAsync(_baseUrl);
+        await _bettingPage.GoToAsync(_baseUrl);
 
-        // Wait for the page to fully load and markets to appear
-        await _page.WaitForSelectorAsync(".selection-btn");
+        await Expect(_bettingPage.Balance).ToBeVisibleAsync();
+        var balanceBefore = await _bettingPage.GetBalanceAsync();
 
-        // Verify balance element is displayed
-        var balanceElement = _page.GetByTestId("user-balance");
-        await Expect(balanceElement).ToBeVisibleAsync();
+        await _bettingPage.PlaceBetAsync(stake: 10.00m);
 
-        // Select a bet
-        var selectionBtn = _page.Locator(".selection-btn").First;
-        await selectionBtn.ClickAsync();
+        await Expect(_bettingPage.BetConfirmation).ToBeVisibleAsync();
 
-        // Fill stake and place bet
-        await _page.FillAsync("#stake-input", "10");
-        await _page.GetByRole(AriaRole.Button, new() { Name = "Place Bet" }).ClickAsync();
+        // Poll for balance update — bet processing is async so UI may lag behind confirmation
+        var balanceUpdated = await PollUntilAsync(async () =>
+            await _bettingPage.GetBalanceAsync() == balanceBefore - 10.00m);
 
-        // Verify bet was placed successfully
-        await Expect(_page.Locator("#bet-confirmation")).ToBeVisibleAsync();
+        Assert.That(balanceUpdated, Is.True,
+            $"Balance should decrease by £10. Expected £{balanceBefore - 10.00m:F2} but UI did not update within timeout.");
 
-        // Wait for the page to reflect changes
-        await _page.WaitForTimeoutAsync(3000);
+        var balanceAfter = await _bettingPage.GetBalanceAsync();
+        Assert.That(balanceAfter, Is.EqualTo(balanceBefore - 10.00m),
+            $"UI balance should be £{balanceBefore - 10.00m:F2} after £10 bet (was £{balanceBefore:F2})");
+    }
 
-        // Verify balance is still displayed correctly
-        await Expect(balanceElement).ToBeVisibleAsync();
-        var balanceText = await balanceElement.TextContentAsync();
-        Assert.That(balanceText, Does.Contain("£"),
-            "Balance should display a pound value after bet placement");
+    private static async Task<bool> PollUntilAsync(Func<Task<bool>> condition, int timeoutMs = 5000, int intervalMs = 250)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (await condition()) return true;
+            await Task.Delay(intervalMs);
+        }
+        return false;
     }
 }
