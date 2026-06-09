@@ -1,0 +1,150 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: #1a1a2e;
+    color: white;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+header h1 { font-size: 1.2rem; }
+
+.user-info {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+section {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.market-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.market-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.market-name { font-weight: 600; }
+
+.market-state {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.market-state.open { background: #e8f5e9; color: #2e7d32; }
+.market-state.suspended { background: #fff3e0; color: #e65100; }
+.market-state.closed { background: #efebe9; color: #5d4037; }
+
+.selections { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.selection-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fafafa;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.selection-btn:hover { background: #e3f2fd; border-color: #1976d2; }
+.selection-btn.selected { background: #1976d2; color: white; border-color: #1976d2; }
+.selection-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.selection-name { font-size: 0.85rem; }
+.selection-odds { font-weight: 700; font-size: 1.1rem; }
+
+.betslip-section { border-left: 4px solid #1976d2; }
+
+.betslip-selection { margin-bottom: 12px; font-weight: 600; }
+.betslip-stake { margin-bottom: 12px; }
+.betslip-stake label { display: block; font-size: 0.85rem; color: #666; margin-bottom: 4px; }
+.betslip-stake input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+.betslip-payout { margin-bottom: 12px; color: #666; }
+
+#place-bet-btn {
+    width: 100%;
+    padding: 12px;
+    background: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+#place-bet-btn:hover { background: #1565c0; }
+
+.confirmation-message { color: #2e7d32; font-weight: 600; }
+
+.bet-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+
+.bet-details { flex: 1; }
+.bet-selection { font-weight: 600; }
+.bet-info { font-size: 0.85rem; color: #666; }
+
+.bet-state {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.bet-state.pending { background: #f3e5f5; color: #7b1fa2; }
+.bet-state.active { background: #e3f2fd; color: #1565c0; }
+.bet-state.won { background: #e8f5e9; color: #2e7d32; }
+.bet-state.lost { background: #ffebee; color: #c62828; }
+.bet-state.void { background: #efebe9; color: #5d4037; }
+
+.bet-payout { font-weight: 700; color: #2e7d32; margin-left: 12px; }

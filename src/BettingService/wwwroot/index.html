@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Betting Service</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Betting Service</h1>
+        <div class="user-info">
+            <span>Balance: </span>
+            <span data-testid="user-balance">£0.00</span>
+        </div>
+    </header>
+
+    <main>
+        <section class="markets-section">
+            <h2>Markets</h2>
+            <div id="markets-list"></div>
+        </section>
+
+        <section class="betslip-section" role="form" aria-label="Bet Slip">
+            <h2>Bet Slip</h2>
+            <div id="betslip-empty">Select a selection to place a bet</div>
+            <div id="betslip-content" hidden>
+                <div class="betslip-selection">
+                    <span id="betslip-selection-name"></span>
+                    <span> @ </span>
+                    <span id="betslip-odds"></span>
+                </div>
+                <div class="betslip-stake">
+                    <label for="stake-input">Stake (£):</label>
+                    <input type="number" id="stake-input" min="0.01" step="0.01" placeholder="10.00">
+                </div>
+                <div class="betslip-payout">
+                    Potential payout: <span id="potential-payout">£0.00</span>
+                </div>
+                <button id="place-bet-btn" type="button">Place Bet</button>
+            </div>
+            <div id="bet-confirmation" hidden>
+                <p class="confirmation-message">Bet placed successfully!</p>
+            </div>
+        </section>
+
+        <section class="bets-section">
+            <h2>My Bets</h2>
+            <div id="bets-list" class="bets-container"></div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
