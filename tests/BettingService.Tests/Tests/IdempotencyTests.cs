@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
 
@@ -86,8 +85,8 @@ public class IdempotencyTests : PlaywrightTest
         // Check balance after first settlement
         var balanceAfterFirst = await _api.GetAsync($"/api/users/{userId}/balance");
         var balanceData1 = await balanceAfterFirst.JsonAsync();
-        Assert.That(balanceData1.Value.GetProperty("amount").GetDecimal(), Is.GreaterThan(0m),
-            "Balance should be positive after winning settlement");
+        Assert.That(balanceData1.Value.GetProperty("amount").GetDecimal(), Is.EqualTo(115.00m),
+            "Balance should be 115.00 after winning settlement");
 
         // Act: post the same result again (duplicate)
         var result2 = await _api.PostAsync($"/api/events/{eventId}/result", new()
@@ -102,8 +101,8 @@ public class IdempotencyTests : PlaywrightTest
         // Verify: balance should still be valid
         var balanceAfterSecond = await _api.GetAsync($"/api/users/{userId}/balance");
         var balanceData2 = await balanceAfterSecond.JsonAsync();
-        Assert.That(balanceData2.Value.GetProperty("amount").GetDecimal(), Is.GreaterThan(0m),
-            "Balance should remain positive after duplicate result");
+        Assert.That(balanceData2.Value.GetProperty("amount").GetDecimal(), Is.EqualTo(115.00m),
+            "Balance should remain the same (115.00) after duplicate result");
     }
 
     private static async Task<bool> PollUntilAsync(Func<Task<bool>> condition, int timeoutMs, int intervalMs = 250)
